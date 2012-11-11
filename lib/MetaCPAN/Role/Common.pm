@@ -2,13 +2,14 @@ package MetaCPAN::Role::Common;
 
 use Moose::Role;
 use ElasticSearch;
-use Log::Contextual qw( set_logger :dlog );
+use Log::Contextual qw( set_logger :log :dlog );
 use Log::Log4perl ':easy';
 use MetaCPAN::Types qw(:all);
 use ElasticSearchX::Model::Document::Types qw(:all);
 use MooseX::Types::Path::Class qw(:all);
 use FindBin;
 use MetaCPAN::Model;
+use PerlIO::gzip;
 
 has 'cpan' => (
     is         => 'rw',
@@ -17,6 +18,13 @@ has 'cpan' => (
     coerce     => 1,
     documentation =>
         'Location of a local CPAN mirror, looks for $ENV{MINICPAN} and ~/CPAN'
+);
+
+has perms => (
+    is         => 'ro',
+    isa        => 'HashRef',
+    lazy_build => 1,
+    traits     => ['NoGetopt']
 );
 
 has level => (
@@ -120,6 +128,40 @@ sub _build_cpan {
     die
         "Couldn't find a local cpan mirror. Please specify --cpan or set MINICPAN";
 
+}
+
+sub _build_perms {
+    my $self = shift;
+    my $file = $self->cpan->file(qw(modules 06perms.txt));
+    my %authors;
+    if ( -e $file ) {
+        log_debug { "parsing ", $file };
+        my $fh = $file->openr;
+        while ( my $line = <$fh> ) {
+            my ( $module, $author, $type ) = split( /,/, $line );
+            next unless ($type);
+            $authors{$module} ||= [];
+            push( @{ $authors{$module} }, $author );
+        }
+        close $fh;
+    }
+    else {
+        log_warn {"$file could not be found."};
+    }
+
+    my $packages = $self->cpan->file(qw(modules 02packages.details.txt.gz));
+    if ( -e $packages ) {
+        log_debug { "parsing ", $packages };
+        open my $fh, "<:gzip", $packages;
+        while ( my $line = <$fh> ) {
+            if ( $line =~ /^(.+?)\s+.+?\s+\S\/\S+\/(\S+)\// ) {
+                $authors{$1} ||= [];
+                push( @{ $authors{$1} }, $2 );
+            }
+        }
+        close $fh;
+    }
+    return \%authors;
 }
 
 sub remote {

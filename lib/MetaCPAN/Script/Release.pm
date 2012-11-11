@@ -62,13 +62,6 @@ has detect_backpan => (
 );
 has backpan_index => ( is => 'ro', lazy_build => 1 );
 
-has perms => (
-    is         => 'ro',
-    isa        => 'HashRef',
-    lazy_build => 1,
-    traits     => ['NoGetopt']
-);
-
 sub run {
     my $self = shift;
     my ( undef, @args ) = @{ $self->extra_argv };
@@ -464,40 +457,6 @@ sub detect_status {
         log_debug {'BackPAN detected'};
         return 'backpan';
     }
-}
-
-sub _build_perms {
-    my $self = shift;
-    my $file = $self->cpan->file(qw(modules 06perms.txt));
-    my %authors;
-    if ( -e $file ) {
-        log_debug { "parsing ", $file };
-        my $fh = $file->openr;
-        while ( my $line = <$fh> ) {
-            my ( $module, $author, $type ) = split( /,/, $line );
-            next unless ($type);
-            $authors{$module} ||= [];
-            push( @{ $authors{$module} }, $author );
-        }
-        close $fh;
-    }
-    else {
-        log_warn {"$file could not be found."};
-    }
-
-    my $packages = $self->cpan->file(qw(modules 02packages.details.txt.gz));
-    if ( -e $packages ) {
-        log_debug { "parsing ", $packages };
-        open my $fh, "<:gzip", $packages;
-        while ( my $line = <$fh> ) {
-            if ( $line =~ /^(.+?)\s+.+?\s+\S\/\S+\/(\S+)\// ) {
-                $authors{$1} ||= [];
-                push( @{ $authors{$1} }, $2 );
-            }
-        }
-        close $fh;
-    }
-    return \%authors;
 }
 
 1;
