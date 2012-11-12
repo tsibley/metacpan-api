@@ -27,6 +27,14 @@ has perms => (
     traits     => ['NoGetopt']
 );
 
+has release_pattern => (
+    is              => 'ro',
+    isa             => 'RegexpRef',
+    default         => sub { qr/\.(tgz|tbz|tar[\._-]gz|tar\.bz2|tar\.Z|zip|7z)$/ },
+    documentation   => "regexp matching release tarball extensions",
+    traits          => ['NoGetopt'],
+);
+
 has level => (
     is            => 'ro',
     isa           => 'Str',

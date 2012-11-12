@@ -69,8 +69,7 @@ sub run {
     for (@args) {
         if ( -d $_ ) {
             log_info {"Looking for tarballs in $_"};
-            my $find = File::Find::Rule->new->file->name(
-                qr/\.(tgz|tbz|tar[\._-]gz|tar\.bz2|tar\.Z|zip|7z)$/);
+            my $find = File::Find::Rule->new->file->name( $self->release_pattern );
             $find = $find->mtime( ">" . ( time - $self->age * 3600 ) )
                 if ( $self->age );
             push(
