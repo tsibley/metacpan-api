@@ -534,16 +534,28 @@ sub set_authorized {
     # only authorized perl distributions make it into the CPAN
     return () if ( $self->distribution eq 'perl' );
     foreach my $module ( @{ $self->module } ) {
-        $module->authorized(0)
-            if ( $perms->{ $module->name } && !grep { $_ eq $self->author }
-            @{ $perms->{ $module->name } } );
+        next unless $perms->{$module->name};
+
+        if ( grep { $_ eq $self->author }
+            @{ $perms->{ $module->name } } ) {
+            $module->authorized(1)
+                unless $module->authorized;
+        } else {
+            $module->authorized(0)
+                if $module->authorized;
+        }
     }
-    $self->authorized(0)
-        if ( $self->authorized
-        && $self->documentation
-        && $perms->{ $self->documentation }
-        && !grep { $_ eq $self->author }
-        @{ $perms->{ $self->documentation } } );
+
+    if ( $self->documentation and $perms->{ $self->documentation } ) {
+        if ( grep { $_ eq $self->author }
+            @{ $perms->{ $self->documentation } } ) {
+            $self->authorized(1)
+                unless $self->authorized;
+        } else {
+            $self->authorized(0)
+                if $self->authorized;
+        }
+    }
     return grep { !$_->authorized && $_->indexed } @{ $self->module };
 }
 
